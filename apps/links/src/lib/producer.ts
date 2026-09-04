@@ -149,6 +149,9 @@ function connect(reportFailure = true): Promise<boolean> {
 			producer = null;
 			nextReconnectAt = Date.now() + reconnectCooldownMs;
 			setAttributes({ kafka_connected: false });
+			if (!reportFailure) {
+				throw error;
+			}
 			return false;
 		} finally {
 			connectPromise = null;

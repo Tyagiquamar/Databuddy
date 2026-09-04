@@ -757,7 +757,7 @@ jobs:
           for i in {1..30}; do
             STATUS_BODY=$(curl -sS http://localhost:2500/health/status)
             echo "Links /health/status: $STATUS_BODY"
-            if echo "$STATUS_BODY" | jq -e '.status == "ok" or .status == "degraded"' > /dev/null; then
+            if echo "$STATUS_BODY" | jq -e '.status == "ok"' > /dev/null; then
               echo "Links dependency health is valid"
               break
             fi

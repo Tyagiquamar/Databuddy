@@ -308,3 +308,50 @@ describe("producer health state", () => {
 		}
 	});
 });
+
+describe("health probe failures (issue #719)", () => {
+	test("health refresh rejects loudly when Kafka is unreachable", async () => {
+		process.env.REDPANDA_BROKER = "redpanda.test:9092";
+		nextProducer = makeProducer({
+			connect: () => Promise.reject(new Error("tls handshake failed")),
+		});
+		const { getProducerHealthState, refreshProducerConnection } =
+			await loadProducer();
+
+		await expect(refreshProducerConnection()).rejects.toThrow(
+			"tls handshake failed"
+		);
+		expect(setAttributes).toHaveBeenCalledWith({
+			kafka_health_connect_failed: true,
+		});
+		expect(getProducerHealthState()).toBe("cooldown");
+	});
+
+	test("health refresh resolves once Kafka is reachable", async () => {
+		process.env.REDPANDA_BROKER = "redpanda.test:9092";
+		nextProducer = makeProducer();
+		const {
+			disconnectProducer,
+			getProducerHealthState,
+			refreshProducerConnection,
+		} = await loadProducer();
+
+		await refreshProducerConnection();
+
+		expect(getProducerHealthState()).toBe("connected");
+		await disconnectProducer();
+	});
+
+	test("production sends still fall back to ClickHouse when Kafka is down", async () => {
+		process.env.REDPANDA_BROKER = "redpanda.test:9092";
+		nextProducer = makeProducer({
+			connect: () => Promise.reject(new Error("broker unavailable")),
+		});
+		const { sendLinkVisit } = await loadProducer();
+
+		const result = await sendLinkVisit(event, event.link_id);
+
+		expect(result).toBe(true);
+		expect(clickHouseInsert).toHaveBeenCalledTimes(1);
+	});
+});
