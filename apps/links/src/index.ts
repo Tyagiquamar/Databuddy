@@ -11,7 +11,11 @@ import { Elysia, redirect } from "elysia";
 import { createError, initLogger, log } from "evlog";
 import { evlog } from "evlog/elysia";
 import { drain, enrich, flushDrain } from "./lib/logging";
-import { calculateLinkReadiness } from "./lib/health";
+import {
+	calculateLinkReadiness,
+	mapRedpandaServiceStatus,
+} from "./lib/health";
+import { didKafkaConnectFail } from "./lib/producer";
 import {
 	disconnectProducer,
 	getProducerHealthState,
@@ -160,14 +164,11 @@ const app = new Elysia()
 		).then((probeResult) => {
 			const state = getProducerHealthState();
 			return {
-				status:
-					state === "connected"
-						? ("ok" as const)
-						: state === "disabled"
-							? ("disabled" as const)
-							: probeResult.status === "error" || state === "cooldown"
-								? ("error" as const)
-								: ("pending" as const),
+				status: mapRedpandaServiceStatus({
+					producerState: state,
+					probeErrored: probeResult.status === "error",
+					kafkaConnectFailed: didKafkaConnectFail(),
+				}),
 				latency_ms: probeResult.latency_ms,
 				state,
 			};

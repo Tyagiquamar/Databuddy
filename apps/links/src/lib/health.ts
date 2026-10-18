@@ -12,6 +12,34 @@ export interface LinkReadiness {
 	status: "degraded" | "ok" | "unavailable";
 }
 
+export type ProducerHealthState =
+	| "connected"
+	| "connecting"
+	| "cooldown"
+	| "disabled"
+	| "idle";
+
+export function mapRedpandaServiceStatus(input: {
+	producerState: ProducerHealthState;
+	probeErrored: boolean;
+	kafkaConnectFailed: boolean;
+}): LinkDependencyStatus {
+	if (input.producerState === "connected") {
+		return "ok";
+	}
+	if (input.producerState === "disabled") {
+		return "disabled";
+	}
+	if (
+		input.probeErrored ||
+		input.producerState === "cooldown" ||
+		(input.producerState === "idle" && input.kafkaConnectFailed)
+	) {
+		return "error";
+	}
+	return "pending";
+}
+
 export function calculateLinkReadiness(
 	services: LinkHealthStatuses
 ): LinkReadiness {

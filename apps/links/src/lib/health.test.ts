@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { calculateLinkReadiness } from "./health";
+import { calculateLinkReadiness, mapRedpandaServiceStatus } from "./health";
 
 const healthy = {
 	clickhouse: "ok",
@@ -7,6 +7,28 @@ const healthy = {
 	redis: "ok",
 	redpanda: "ok",
 } as const;
+
+describe("Redpanda health mapping", () => {
+	test("reports degraded when Kafka failed but probe state is idle", () => {
+		expect(
+			mapRedpandaServiceStatus({
+				producerState: "idle",
+				probeErrored: false,
+				kafkaConnectFailed: true,
+			})
+		).toBe("error");
+	});
+
+	test("keeps pending for idle producer without a recorded connect failure", () => {
+		expect(
+			mapRedpandaServiceStatus({
+				producerState: "idle",
+				probeErrored: false,
+				kafkaConnectFailed: false,
+			})
+		).toBe("pending");
+	});
+});
 
 describe("Links readiness", () => {
 	test("stays ready when Redpanda is down but ClickHouse is available", () => {
