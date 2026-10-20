@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, mock } from "bun:test";
 import { AI_AGENTS } from "@databuddy/shared/bot-detection/ai-agents";
+import { isMarkdownFirstAccept } from "@databuddy/shared/bot-detection/types";
 import { AI_AGENT_USER_AGENT, proxy, trackAgents } from "../src/agents/index";
 
 const GPTBOT =
@@ -59,6 +60,11 @@ describe("trackAgents", () => {
 		["/docs/intro.md", {}, { format: "markdown" }],
 		[
 			"/docs/intro",
+			{ accept: "text/html, text/markdown;q=0" },
+			{ format: "html" },
+		],
+		[
+			"/docs/intro",
 			{ accept: "text/markdown, text/html, */*", userAgent: CLAUDE_CODE },
 			{ format: "markdown" },
 		],
@@ -74,6 +80,74 @@ describe("trackAgents", () => {
 		expect(bodies[0] ?? null).toEqual(
 			expected ? expect.objectContaining(expected) : null
 		);
+	});
+
+	it("reports a signed agent browser that sends a Chrome user agent", async () => {
+		const bodies = captureBodies();
+		await trackAgents(
+			new Request("https://example.com/pricing", {
+				headers: {
+					accept: "text/html",
+					"signature-agent": '"https://chatgpt.com"',
+					"user-agent": CHROME,
+				},
+			}),
+			OPTIONS
+		);
+		expect(bodies).toEqual([
+			expect.objectContaining({
+				accept: "text/html",
+				signatureAgent: '"https://chatgpt.com"',
+				userAgent: CHROME,
+			}),
+		]);
+	});
+
+	it("reports unknown clients that ask for markdown first, the way basket classifies them", async () => {
+		const accepts = [
+			"text/markdown, text/html, */*",
+			"text/x-markdown",
+			"text/html, text/markdown",
+			"text/markdown;q=0, text/html",
+			"text/markdown; q=0.5, text/html",
+			"*/*",
+			"application/json",
+		];
+		for (const accept of accepts) {
+			const bodies = captureBodies();
+			await trackAgents(
+				request("/docs", { accept, userAgent: "axios/1.7.2" }),
+				OPTIONS
+			);
+			expect(bodies.length).toBe(isMarkdownFirstAccept(accept) ? 1 : 0);
+		}
+		const browserBodies = captureBodies();
+		await trackAgents(
+			new Request("https://example.com/docs", {
+				headers: {
+					accept: "text/markdown",
+					"sec-fetch-mode": "navigate",
+					"user-agent": CHROME,
+				},
+			}),
+			OPTIONS
+		);
+		expect(browserBodies).toEqual([]);
+	});
+
+	it("caps headers to the lengths basket accepts", async () => {
+		const bodies = captureBodies();
+		await trackAgents(
+			request("/pricing", {
+				accept: "a".repeat(600),
+				userAgent: `${GPTBOT} ${"x".repeat(600)}`,
+			}),
+			OPTIONS
+		);
+		expect(bodies[0]).toMatchObject({
+			accept: "a".repeat(512),
+			userAgent: `${GPTBOT} ${"x".repeat(600)}`.slice(0, 512),
+		});
 	});
 
 	it("accepts an Express request behind a proxy", async () => {
@@ -127,12 +201,42 @@ describe("trackAgents", () => {
 		expect(bodies).toEqual([]);
 	});
 
-	it("never rejects when basket is unreachable", async () => {
-		globalThis.fetch = mock(() =>
-			Promise.reject(new Error("network down"))
-		) as typeof fetch;
-		await expect(
-			trackAgents(request("/pricing"), OPTIONS)
-		).resolves.toBeUndefined();
+	it.each([
+		[
+			"basket is unreachable",
+			() => {
+				globalThis.fetch = mock(() =>
+					Promise.reject(new Error("network down"))
+				) as typeof fetch;
+				return trackAgents(request("/pricing"), OPTIONS);
+			},
+		],
+		[
+			"the runtime has no fetch",
+			() => {
+				globalThis.fetch = undefined as never;
+				return trackAgents(request("/pricing"), OPTIONS);
+			},
+		],
+		[
+			"a Node request has a malformed URL",
+			() =>
+				trackAgents(
+					{ headers: { "user-agent": GPTBOT }, url: "http://[::1" },
+					OPTIONS
+				),
+		],
+		[
+			"a Node request has no headers",
+			() => trackAgents({ url: "/" } as never, OPTIONS),
+		],
+	])("never rejects when %s", async (_case, run) => {
+		await expect(run()).resolves.toBeUndefined();
+	});
+
+	it("never throws as a proxy, even without waitUntil", () => {
+		captureBodies();
+		expect(() => proxy(request("/pricing"))).not.toThrow();
+		expect(() => proxy(request("/pricing"), {})).not.toThrow();
 	});
 });

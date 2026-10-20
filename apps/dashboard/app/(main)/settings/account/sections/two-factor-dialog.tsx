@@ -8,6 +8,7 @@ import { useTheme } from "next-themes";
 import { useEffect, useMemo, useState } from "react";
 import { QRCode } from "react-qrcode-logo";
 import { toast } from "sonner";
+import { showErrorToast } from "@/lib/user-facing-error";
 import { setPasswordForOAuthUser } from "@/app/actions/users";
 import { useCopyToClipboard } from "@/hooks/use-copy-to-clipboard";
 import { cn } from "@/lib/utils";
@@ -118,11 +119,12 @@ export function TwoFactorDialog({
 			return result;
 		},
 		onSuccess: () => {
-			toast.success("Password set successfully!");
+			toast.success("Password set");
 			setPassword(newPassword);
 			setStep("password");
 			onSuccess();
 		},
+		meta: { errorTitle: "Failed to set password" },
 	});
 
 	const enableMutation = useMutation({
@@ -144,6 +146,9 @@ export function TwoFactorDialog({
 			}
 			setStep("setup");
 		},
+		onError: (error) =>
+			showErrorToast(error, "Failed to turn on two-factor authentication"),
+		meta: { suppressGlobalErrorToast: true },
 	});
 
 	const verifyMutation = useMutation({
@@ -158,10 +163,11 @@ export function TwoFactorDialog({
 		},
 		onSuccess: () => {
 			trackAppEvent(APP_EVENTS.twoFactorEnabled);
-			toast.success("Two-factor authentication enabled!");
+			toast.success("Two-factor authentication enabled");
 			setStep("backup");
 			onSuccess();
 		},
+		meta: { errorTitle: "Failed to verify code" },
 	});
 
 	const disableMutation = useMutation({
@@ -178,6 +184,9 @@ export function TwoFactorDialog({
 			onSuccess();
 			onOpenChange(false);
 		},
+		onError: (error) =>
+			showErrorToast(error, "Failed to turn off two-factor authentication"),
+		meta: { suppressGlobalErrorToast: true },
 	});
 
 	const regenerateBackupMutation = useMutation({
@@ -196,6 +205,9 @@ export function TwoFactorDialog({
 				toast.success("New backup codes generated");
 			}
 		},
+		onError: (error) =>
+			showErrorToast(error, "Failed to generate backup codes"),
+		meta: { suppressGlobalErrorToast: true },
 	});
 
 	const { isCopied: copiedBackup, copyToClipboard: copyBackupCodes } =
@@ -228,12 +240,9 @@ export function TwoFactorDialog({
 						</Dialog.Header>
 
 						<Dialog.Body className="space-y-4">
-							<div className="flex items-start gap-2 rounded-md border border-blue-500/20 bg-blue-500/5 p-3">
-								<KeyIcon className="mt-0.5 size-4 shrink-0 text-blue-600 dark:text-blue-400" />
-								<Text
-									className="text-blue-600 dark:text-blue-400"
-									variant="caption"
-								>
+							<div className="flex items-start gap-2 rounded-md border bg-card p-3">
+								<KeyIcon className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+								<Text tone="muted" variant="caption">
 									This password will only be used for security actions like
 									enabling or disabling 2FA.
 								</Text>
@@ -271,7 +280,7 @@ export function TwoFactorDialog({
 								loading={setPasswordMutation.isPending}
 								onClick={() => setPasswordMutation.mutate()}
 							>
-								Set password & continue
+								Set password and continue
 							</Button>
 						</Dialog.Footer>
 					</>
@@ -407,7 +416,7 @@ export function TwoFactorDialog({
 								loading={verifyMutation.isPending}
 								onClick={() => verifyMutation.mutate()}
 							>
-								Verify & enable
+								Verify and enable
 							</Button>
 						</Dialog.Footer>
 					</>
@@ -435,9 +444,9 @@ export function TwoFactorDialog({
 								))}
 							</div>
 
-							<div className="flex items-start gap-2 rounded-md border border-warning/20 bg-warning/5 p-3">
+							<div className="flex items-start gap-2 rounded-md border bg-card p-3">
 								<WarningCircleIcon className="mt-0.5 size-4 shrink-0 text-warning" />
-								<Text className="text-warning" variant="caption">
+								<Text tone="muted" variant="caption">
 									If you lose access to your authenticator, these codes are the
 									only way to recover your account.
 								</Text>
@@ -453,7 +462,7 @@ export function TwoFactorDialog({
 								{copiedBackup ? (
 									<>
 										<CheckCircleIcon className="size-3.5 text-success" />
-										Copied!
+										Copied
 									</>
 								) : (
 									<>
@@ -477,9 +486,9 @@ export function TwoFactorDialog({
 						</Dialog.Header>
 
 						<Dialog.Body className="space-y-4">
-							<div className="flex items-start gap-2 rounded-md border border-success/20 bg-success/5 p-3">
+							<div className="flex items-start gap-2 rounded-md border bg-card p-3">
 								<ShieldCheckIcon className="mt-0.5 size-4 shrink-0 text-success" />
-								<Text className="text-success" variant="caption">
+								<Text tone="muted" variant="caption">
 									Two-factor authentication is active. Your account has an extra
 									layer of security.
 								</Text>

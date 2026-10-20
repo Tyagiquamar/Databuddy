@@ -25,6 +25,12 @@ const STATUS_LABELS: Record<string, string> = {
 	resolved: "Resolved",
 };
 
+const SEVERITY_LABELS: Record<string, string> = {
+	minor: "Minor",
+	major: "Major",
+	critical: "Critical",
+};
+
 type Incident = Awaited<
 	ReturnType<typeof orpc.statusPage.listIncidents.call>
 >[number];
@@ -52,6 +58,7 @@ export function IncidentsTab({
 
 	const deleteMutation = useMutation({
 		...orpc.statusPage.deleteIncident.mutationOptions(),
+		meta: { errorTitle: "Failed to delete incident" },
 		onSuccess: () => {
 			queryClient.invalidateQueries({
 				queryKey: orpc.statusPage.listIncidents.key({
@@ -71,7 +78,10 @@ export function IncidentsTab({
 			) : incidentsQuery.isError ? (
 				<div className="px-5 py-12">
 					<EmptyState
-						action={{ label: "Retry", onClick: () => incidentsQuery.refetch() }}
+						action={{
+							label: "Try again",
+							onClick: () => incidentsQuery.refetch(),
+						}}
 						description="Something went wrong while loading incidents."
 						icon={<SirenIcon />}
 						title="Failed to load incidents"
@@ -88,12 +98,12 @@ export function IncidentsTab({
 								variant="secondary"
 							>
 								<PlusIcon className="size-3.5" />
-								Report Incident
+								Report incident
 							</Button>
 						}
 						description="Report an incident when something is wrong. It will appear on your public status page."
 						icon={<SirenIcon />}
-						title="No incidents"
+						title="No incidents yet"
 					/>
 				</div>
 			) : (
@@ -139,7 +149,7 @@ export function IncidentsTab({
 						await deleteMutation.mutateAsync({ incidentId: deleteTarget });
 					}
 				}}
-				title="Delete Incident"
+				title="Delete incident"
 			/>
 		</>
 	);
@@ -166,20 +176,20 @@ function IncidentRow({
 	const isResolved = incident.status === "resolved";
 
 	const iconBg = isResolved
-		? "bg-emerald-500/10"
+		? "bg-success/10"
 		: incident.severity === "critical"
-			? "bg-red-500/10"
+			? "bg-destructive/10"
 			: incident.severity === "major"
-				? "bg-amber-500/10"
+				? "bg-warning/10"
 				: "bg-muted";
 
 	const StatusIcon = isResolved ? CheckCircleIcon : WarningCircleIcon;
 	const iconColor = isResolved
-		? "text-emerald-500"
+		? "text-success"
 		: incident.severity === "critical"
-			? "text-red-500"
+			? "text-destructive"
 			: incident.severity === "major"
-				? "text-amber-500"
+				? "text-warning"
 				: "text-muted-foreground";
 
 	const latestUpdate = incident.updates[0];
@@ -202,15 +212,15 @@ function IncidentRow({
 					</p>
 					<span
 						className={cn(
-							"shrink-0 rounded px-1.5 py-0.5 font-semibold text-[10px] uppercase",
+							"shrink-0 rounded px-1.5 py-0.5 font-semibold text-[10px]",
 							incident.severity === "critical"
-								? "bg-red-500/10 text-red-600 dark:text-red-400"
+								? "bg-destructive/10 text-destructive"
 								: incident.severity === "major"
-									? "bg-amber-500/10 text-amber-600 dark:text-amber-400"
+									? "bg-warning/10 text-warning"
 									: "bg-muted text-muted-foreground"
 						)}
 					>
-						{incident.severity}
+						{SEVERITY_LABELS[incident.severity] ?? incident.severity}
 					</span>
 				</div>
 				<p className="text-muted-foreground text-xs">

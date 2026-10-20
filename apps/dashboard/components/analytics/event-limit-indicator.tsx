@@ -9,7 +9,7 @@ import { formatLocaleNumber } from "@/lib/format-locale-number";
 import { orpc } from "@/lib/orpc";
 import { cn } from "@/lib/utils";
 import { WarningIcon } from "@databuddy/ui/icons";
-import { buttonVariants } from "@databuddy/ui";
+import { buttonVariants, Text } from "@databuddy/ui";
 
 export function EventLimitIndicator() {
 	const pathname = usePathname();
@@ -20,8 +20,25 @@ export function EventLimitIndicator() {
 		enabled: !(isDemoRoute || isSelfHosted),
 	});
 
-	if (isSelfHosted || !data || data.unlimited) {
+	if (isDemoRoute || isSelfHosted || !data || data.unlimited) {
 		return null;
+	}
+
+	if (data.unavailable === true) {
+		return (
+			<div
+				className="flex items-center gap-2 rounded border border-warning/30 bg-warning/5 px-3 py-2"
+				role="status"
+			>
+				<WarningIcon
+					aria-hidden="true"
+					className="size-4 shrink-0 text-warning"
+				/>
+				<Text className="text-pretty" tone="muted" variant="caption">
+					Billing usage is temporarily unavailable.
+				</Text>
+			</div>
+		);
 	}
 
 	const planLimit = Number(data.includedUsage ?? 0);
@@ -44,14 +61,7 @@ export function EventLimitIndicator() {
 	const isDestructive = isOverage || percentage >= 95;
 
 	return (
-		<div
-			className={cn(
-				"flex items-center justify-between rounded-md border px-3 py-2",
-				isDestructive
-					? "border-destructive/30 bg-destructive/5"
-					: "border-warning/30 bg-warning/5"
-			)}
-		>
+		<div className="flex items-center justify-between rounded-md border bg-card px-3 py-2">
 			<div className="flex items-center gap-2">
 				<WarningIcon
 					className={cn(
@@ -60,18 +70,13 @@ export function EventLimitIndicator() {
 					)}
 				/>
 				{isOverage ? (
-					<p className="font-medium text-destructive text-xs">
+					<p className="font-medium text-xs">
 						{formatLocaleNumber(overage)} events over limit
 					</p>
 				) : (
 					<p className="text-muted-foreground text-xs">
 						{formatLocaleNumber(remaining)} events remaining
-						<span
-							className={cn(
-								"ml-1.5 font-medium",
-								isDestructive ? "text-destructive" : "text-warning"
-							)}
-						>
+						<span className="ml-1.5 font-medium text-foreground">
 							({percentage.toFixed(0)}% used)
 						</span>
 					</p>

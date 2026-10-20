@@ -1,4 +1,5 @@
 import path from "node:path";
+import { storageEndpoint } from "@databuddy/env/app";
 import { readBooleanEnv } from "@databuddy/env/boolean";
 import type { NextConfig } from "next";
 
@@ -26,7 +27,12 @@ const nextConfig: NextConfig = {
 		if (!apiProxyUrl) {
 			return [];
 		}
-		return ["/rpc/:path*", "/v1/:path*"].map((source) => ({
+		return [
+			"/rpc/:path*",
+			"/v1/:path*",
+			"/.well-known/oauth-protected-resource",
+			"/.well-known/oauth-protected-resource/:path*",
+		].map((source) => ({
 			source,
 			destination: new URL(source, apiProxyUrl).href,
 		}));
@@ -48,7 +54,7 @@ const nextConfig: NextConfig = {
 	outputFileTracingIncludes: {
 		"/dby/og": ["./fonts/lt-superior/*.otf"],
 	},
-	serverExternalPackages: ["pg"],
+	serverExternalPackages: ["pg", "evlog"],
 	images: {
 		remotePatterns: [
 			{
@@ -134,12 +140,14 @@ const nextConfig: NextConfig = {
 							"http://localhost:4000",
 					].map((url) => new URL(url).origin)
 				: []),
+			new URL(storageEndpoint()).origin,
 			"https://*.databuddy.cc",
 			"https://*.useautumn.com",
 			"https://api.openai.com",
 			"https://bzr.openai.com",
 			"https://hooks.slack.com",
 			"https://api.dub.co",
+			"https://api.microlink.io",
 			"wss://*.databuddy.cc"
 		);
 		const scriptSources = joinCspSources(

@@ -18,6 +18,9 @@ export interface AiTrafficSpansRow {
 	verification: string;
 	source: string;
 	format: string;
+	host: string;
+	accept: string;
+	status_code: number;
 }
 
 export interface AiTrafficSpansInsert {
@@ -33,6 +36,9 @@ export interface AiTrafficSpansInsert {
 	verification?: string;
 	source?: string;
 	format?: string;
+	host?: string;
+	accept?: string;
+	status_code?: number;
 }
 
 export interface BlockedTrafficRow {
@@ -371,6 +377,46 @@ export interface LinkVisitsInsert {
 	device_type?: string | null;
 }
 
+export interface McpSpansRow {
+	owner_id: string;
+	website_id: string;
+	timestamp: string;
+	environment: string;
+	server_name: string;
+	server_version: string;
+	tool: string;
+	is_error: boolean;
+	error: string;
+	error_code: string;
+	duration_ms: number;
+	output_chars: number;
+	session_id: string;
+	client: string;
+	client_name: string;
+	client_version: string;
+	user_agent: string;
+}
+
+export interface McpSpansInsert {
+	owner_id: string;
+	website_id?: string;
+	timestamp: number | string;
+	environment?: string;
+	server_name?: string;
+	server_version?: string;
+	tool: string;
+	is_error: boolean;
+	error?: string;
+	error_code?: string;
+	duration_ms: number;
+	output_chars?: number;
+	session_id?: string;
+	client?: string;
+	client_name?: string;
+	client_version?: string;
+	user_agent?: string;
+}
+
 export interface OutgoingLinksRow {
 	id: string;
 	client_id: string;
@@ -544,6 +590,7 @@ export interface ClickHouseTables {
 	identity_anon_pairs: IdentityAnonPairsRow;
 	identity_session_pairs: IdentitySessionPairsRow;
 	link_visits: LinkVisitsRow;
+	mcp_spans: McpSpansRow;
 	outgoing_links: OutgoingLinksRow;
 	revenue: RevenueRow;
 	web_vitals_spans: WebVitalsSpansRow;
@@ -552,7 +599,7 @@ export interface ClickHouseTables {
 }
 
 export const TABLE_COLUMNS = {
-	"analytics.ai_traffic_spans": ["client_id", "timestamp", "bot_type", "bot_name", "user_agent", "path", "referrer", "agent_id", "agent_purpose", "verification", "source", "format"],
+	"analytics.ai_traffic_spans": ["client_id", "timestamp", "bot_type", "bot_name", "user_agent", "path", "referrer", "agent_id", "agent_purpose", "verification", "source", "format", "host", "accept", "status_code"],
 	"analytics.blocked_traffic": ["id", "client_id", "timestamp", "path", "url", "referrer", "method", "origin", "ip", "user_agent", "accept_header", "language", "block_reason", "block_category", "bot_name", "country", "region", "browser_name", "browser_version", "os_name", "os_version", "device_type", "payload_size", "created_at"],
 	"analytics.custom_events": ["owner_id", "website_id", "timestamp", "event_name", "namespace", "path", "properties", "anonymous_id", "session_id", "source", "profile_id"],
 	"analytics.daily_pageviews": ["client_id", "date", "pageviews"],
@@ -562,6 +609,7 @@ export const TABLE_COLUMNS = {
 	"analytics.identity_anon_pairs": ["client_id", "anonymous_id", "identity_time", "profile_id"],
 	"analytics.identity_session_pairs": ["client_id", "session_id", "identity_time", "profile_id"],
 	"analytics.link_visits": ["id", "link_id", "timestamp", "referrer", "user_agent", "ip_hash", "country", "region", "city", "browser_name", "device_type"],
+	"analytics.mcp_spans": ["owner_id", "website_id", "timestamp", "environment", "server_name", "server_version", "tool", "is_error", "error", "error_code", "duration_ms", "output_chars", "session_id", "client", "client_name", "client_version", "user_agent"],
 	"analytics.outgoing_links": ["id", "client_id", "anonymous_id", "session_id", "href", "text", "properties", "timestamp"],
 	"analytics.revenue": ["owner_id", "website_id", "transaction_id", "provider", "type", "status", "amount", "original_amount", "original_currency", "currency", "anonymous_id", "session_id", "customer_id", "product_id", "product_name", "metadata", "created", "synced_at", "profile_id"],
 	"analytics.web_vitals_spans": ["client_id", "anonymous_id", "session_id", "timestamp", "path", "metric_name", "metric_value", "delivery_id"],
