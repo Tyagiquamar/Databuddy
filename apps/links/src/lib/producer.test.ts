@@ -1,4 +1,12 @@
-import { afterAll, beforeEach, describe, expect, mock, test } from "bun:test";
+import {
+	afterAll,
+	beforeEach,
+	describe,
+	expect,
+	mock,
+	spyOn,
+	test,
+} from "bun:test";
 
 const originalEnvironment = { ...process.env };
 
@@ -84,13 +92,21 @@ const event = {
 	user_agent: "Mozilla/5.0",
 };
 
+function clearRedpandaEnv() {
+	for (const key of [
+		"REDPANDA_BROKER",
+		"REDPANDA_PASSWORD",
+		"REDPANDA_SSL",
+		"REDPANDA_SSL_ENABLED",
+		"REDPANDA_USER",
+	] as const) {
+		Reflect.deleteProperty(process.env, key);
+	}
+}
+
 beforeEach(() => {
 	process.env.SELFHOST = "false";
-	delete process.env.REDPANDA_BROKER;
-	delete process.env.REDPANDA_PASSWORD;
-	delete process.env.REDPANDA_SSL;
-	delete process.env.REDPANDA_SSL_ENABLED;
-	delete process.env.REDPANDA_USER;
+	clearRedpandaEnv();
 	setAttributes.mockClear();
 	captureError.mockClear();
 	clickHouseInsert.mockClear();
@@ -337,9 +353,8 @@ describe("producer health state", () => {
 
 	test("refreshes Redpanda after a failed connection cooldown", async () => {
 		process.env.REDPANDA_BROKER = "redpanda.test:9092";
-		const realNow = Date.now;
 		let now = 1000;
-		Date.now = () => now;
+		const dateNowSpy = spyOn(Date, "now").mockImplementation(() => now);
 		try {
 			nextProducer = makeProducer({
 				connect: () => Promise.reject(new Error("broker unavailable")),
@@ -362,7 +377,7 @@ describe("producer health state", () => {
 			expect(getProducerHealthState()).toBe("connected");
 			await disconnectProducer();
 		} finally {
-			Date.now = realNow;
+			dateNowSpy.mockRestore();
 		}
 	});
 });
@@ -415,9 +430,8 @@ describe("health probe failures (issue #719)", () => {
 
 	test("flags Kafka outages for the health endpoint until recovery", async () => {
 		process.env.REDPANDA_BROKER = "redpanda.test:9092";
-		const realNow = Date.now;
 		let now = 1000;
-		Date.now = () => now;
+		const dateNowSpy = spyOn(Date, "now").mockImplementation(() => now);
 		try {
 			nextProducer = makeProducer({
 				connect: () => Promise.reject(new Error("broker unavailable")),
@@ -440,7 +454,7 @@ describe("health probe failures (issue #719)", () => {
 			expect(didKafkaConnectFail()).toBe(false);
 			await disconnectProducer();
 		} finally {
-			Date.now = realNow;
+			dateNowSpy.mockRestore();
 		}
 	});
 
